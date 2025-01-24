@@ -190,6 +190,7 @@ jobs:
           - "vault=1.14.*"
           - "vault=1.15.*"
           - "vault=1.16.*"
+          - "./bao_*.deb"
 
     steps:
     - uses: actions/checkout@v4
@@ -229,15 +230,20 @@ jobs:
           -o APT::Get::List-Cleanup="0" \
           -o Dir::Etc::sourcelist="sources.list.d/hashicorp.list"
 
+        [[ "${{ matrix.vault-version }}" =~ bao ]] && wget https://github.com/openbao/openbao/releases/download/v2.1.1/bao_2.1.1_linux_amd64.deb
+
         sudo apt install \
           consul \
           ${{ matrix.vault-version }} \
           ;
 
-        # We disble cap_ipc_lock here as its generally incompatabile with GitHub
-        # Actions' runtime environments.
-        sudo setcap cap_ipc_lock= /usr/bin/vault
+        [[ "${{ matrix.vault-version }}" =~ bao ]] && sudo ln -s /usr/bin/bao /usr/bin/vault
 
+        # We disble cap_ipc_lock here as its generally incompatible with GitHub
+        # Actions' runtime environments. This is not necessary for OpenBao.
+        [[ "${{ matrix.vault-version }}" =~ vault ]] && sudo setcap cap_ipc_lock= /usr/bin/vault
+
+        true
     - name: pytest tests/integration_tests
       env:
         COVFILE: coverage_integration_py${{ matrix.python-version }}_${{ matrix.vault-version }}.xml
